@@ -267,53 +267,41 @@ void removerLivro(BPlusTree& indiceTitulo, BPlusTree& indiceAutor,
 
     Livro* livro = indiceCodigo[codigo];
 
+    // Remove dos índices
     for (const auto& palavra : extrairPalavras(livro->titulo)) {
         indiceTitulo.remover(palavra, livro);
     }
-
     for (const auto& palavra : extrairPalavras(livro->autor)) {
         indiceAutor.remover(palavra, livro);
     }
 
+    // Remove do vetor e do mapa
     indiceCodigo.erase(codigo);
     livros.erase(remove(livros.begin(), livros.end(), livro), livros.end());
     delete livro;
 
-    // Reescreve CSV sem o livro removido
-    ifstream in(caminhoCSV);
-    ofstream out(caminhoCSV + ".tmp");
-
-    if (!in.is_open() || !out.is_open()) {
-        cout << "Erro ao acessar arquivo CSV para remoção.\n";
+    // Reescreve todo o CSV com os livros restantes
+    ofstream out(caminhoCSV);
+    if (!out.is_open()) {
+        cout << "Erro ao abrir o arquivo para reescrita!\n";
         return;
     }
 
-    string linha;
-    bool primeiraLinha = true;
+    // Cabeçalho (ajuste conforme o original do seu CSV)
+    out << "Código,Autor,Título,,,,,,,,Classificação,Ano,,,,,,Exemplares,,,,Campus,,,Editora\n";
 
-    while (getline(in, linha)) {
-        if (primeiraLinha) {
-            out << linha << "\n"; // cabeçalho
-            primeiraLinha = false;
-            continue;
-        }
-        vector<string> campos = parseCSVLine(linha);
-        if (campos.size() > 0) {
-            try {
-                int cod = stoi(campos[0]);
-                if (cod == codigo) continue; // pula o livro removido
-            } catch (...) {}
-        }
-        out << linha << "\n";
+    for (const auto* l : livros) {
+        out << l->codigo << ",\"" << l->autor << "\",\"" << l->titulo << "\",,,,,,,," 
+            << l->classificacao << "," << l->ano << ",,,,," 
+            << l->exemplares << ",,,," 
+            << l->campus << ",,,\"" << l->editora << "\"\n";
     }
 
-    in.close();
     out.close();
-    remove(caminhoCSV.c_str());
-    rename((caminhoCSV + ".tmp").c_str(), caminhoCSV.c_str());
 
     cout << "Livro removido com sucesso!\n";
 }
+
 void adicionarLivro(BPlusTree& indiceTitulo, BPlusTree& indiceAutor,
                     unordered_map<int, Livro*>& indiceCodigo, vector<Livro*>& livros,
                     const string& caminhoCSV) {
